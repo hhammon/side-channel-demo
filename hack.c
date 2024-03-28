@@ -7,7 +7,7 @@
 unsigned long cpu_clock();
 int sort_cmp(const void *a, const void *b);
 int check_password(char* password);
-char* crack_password();
+char* crack_password(int rounds);
 
 int main(int argc, char **argv) {
 	srand(time(NULL));
@@ -52,7 +52,7 @@ char* crack_password(int rounds) {
 
 	unsigned long  **attempt_cycles = malloc(range * sizeof(unsigned long*));
 
-	if (password == NULL || attempt_cycles == NULL) {
+	if (attempt_cycles == NULL) {
 		free(password);
 
 		exit(1);
