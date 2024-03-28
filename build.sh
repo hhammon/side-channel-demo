@@ -1,0 +1,1 @@
+gcc -o hack hack.c cpu-clock.s secret.c
