@@ -50,52 +50,27 @@ char* crack_password(int rounds) {
 
 	memset(password, 0, length);
 
-	unsigned long  **attempt_cycles = malloc(range * sizeof(unsigned long*));
+	char pass_rnd_align[length + 64];
 
-	if (attempt_cycles == NULL) {
-		free(password);
-
-		exit(1);
-	}
+	int *attempt_cycles[range];
 
 	for (int i = 0; i < range; i++) {
-		attempt_cycles[i] = malloc(rounds * sizeof(unsigned long));
+		attempt_cycles[i] = malloc(rounds * sizeof(int));
 
 		if (attempt_cycles[i] == NULL) {
 			for (int j = 0; j < i; j++) {
 				free(attempt_cycles[j]);
 			}
-			free(attempt_cycles);
+
 			free(password);
 
 			exit(1);
 		}
 	}
 
-	unsigned long *median_cycles = malloc(range * sizeof(unsigned long));
+	int median_cycles[range];
 
-	if (median_cycles == NULL) {
-		for (int i = 0; i < range; i++) {
-			free(attempt_cycles[i]);
-		}
-		free(attempt_cycles);
-		free(password);
-
-		exit(1);
-	}
-
-	char *charset = malloc(range);
-
-	if (charset == NULL) {
-		for (int i = 0; i < range; i++) {
-			free(attempt_cycles[i]);
-		}
-		free(attempt_cycles);
-		free(median_cycles);
-		free(password);
-
-		exit(1);
-	}
+	char charset[range];
 
 	for (char c = lower_bound; c < upper_bound; c++) {
 		charset[c - lower_bound] = c;
@@ -115,39 +90,42 @@ char* crack_password(int rounds) {
 				charset[swap] = temp;
 			}
 
+			int offset = rand() & 63;
+			char *pass_rnd_align_ptr = pass_rnd_align + offset;
+			strcpy(pass_rnd_align_ptr, password);
+			pass_rnd_align_ptr[i + 1] = '\0';
+
 			for (int k = 0; k < range; k++) {
 				char c = charset[k];
 				int char_index = c - lower_bound;
 
-				password[i] = c;
+				pass_rnd_align_ptr[i] = c;
 
 				unsigned long start = cpu_clock();
 
-				if (check_password(password)) {
+				if (check_password(pass_rnd_align_ptr)) {
 					for (int i = 0; i < range; i++) {
 						free(attempt_cycles[i]);
 					}
-					free(attempt_cycles);
-					free(median_cycles);
-					free(charset);
 
+					password[i] = c;
 					return password;
 				}
 
 				unsigned long end = cpu_clock();
-				unsigned long duration = end - start;
+				int duration = end - start;
 
 				attempt_cycles[char_index][j] = duration;
 			}
 		}
 
 		for (int j = 0; j < range; j++) {
-			qsort(attempt_cycles[j], rounds, sizeof(unsigned long), sort_cmp);
+			qsort(attempt_cycles[j], rounds, sizeof(int), sort_cmp);
 
 			median_cycles[j] = attempt_cycles[j][rounds >> 1];
 		}
 
-		unsigned long max_cycles = 0;
+		int max_cycles = 0;
 		char candidate;
 		for (char k = lower_bound; k < upper_bound; k++) {
 			int char_index = k - lower_bound;
@@ -168,9 +146,6 @@ char* crack_password(int rounds) {
 	for (int i = 0; i < range; i++) {
 		free(attempt_cycles[i]);
 	}
-	free(attempt_cycles);
-	free(median_cycles);
-	free(charset);
 
 	return NULL;
 }
